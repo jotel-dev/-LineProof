@@ -99,6 +99,9 @@ impl Queue for QueueImpl {
     fn advance(env: Env, admin: Address, batch_size: u32) -> Vec<u32> {
         admin.require_auth();
         let mut config = Self::get_config_internal(&env);
+        if !matches!(config.status, QueueStatus::EnrollmentClosed) {
+            panic!("enrollment must be closed before advancing");
+        }
         config.status = QueueStatus::AdvancementActive;
         env.storage().persistent().set(&Symbol::new(&env, "config"), &config);
 
@@ -114,17 +117,20 @@ impl Queue for QueueImpl {
             }
             let id = idx + 1;
             if let Some(mut pos) = Self::get_position(&env, id) {
-                pos.status = PositionStatus::Advanced;
-                pos.advanced_at = Some(env.ledger().timestamp());
-                let key_pos = Self::position_key(&env, id);
-                env.storage().persistent().set(&key_pos, &pos);
-                advanced.push_back(id);
+                if matches!(pos.status, PositionStatus::Pending) {
+                    pos.status = PositionStatus::Advanced;
+                    pos.advanced_at = Some(env.ledger().timestamp());
+                    let key_pos = Self::position_key(&env, id);
+                    env.storage().persistent().set(&key_pos, &pos);
+                    advanced.push_back(id);
+                }
                 idx += 1;
+            } else {
+                break;
             }
         }
         env.storage().persistent().set(&Symbol::new(&env, "idx"), &idx);
-        config.status = QueueStatus::EnrollmentClosed;
-        env.storage().persistent().set(&Symbol::new(&env, "config"), &config);
+        // Remain in AdvancementActive so callers can issue further advance() batches
         for id in advanced.iter() {
             emit(&env, Symbol::new(&env, "Advanced"), *id, &admin, env.ledger().timestamp());
         }
