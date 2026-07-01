@@ -1,8 +1,6 @@
 use std::panic;
-
-use soroban_sdk::{testutils::Address as _, Address, Env, Symbol, Vec};
-
-use crate::{BindingStatus, IdentityImpl, IdentityRecord, TransferAttempt};
+use soroban_sdk::{testutils::Address as _, Address, Env, Symbol};
+use crate::{BindingStatus, IdentityImpl};
 
 fn setup() -> (Env, Address) {
     let env = Env::default();
@@ -11,68 +9,98 @@ fn setup() -> (Env, Address) {
 }
 
 #[test]
-fn test_bind_creates_record() {
+fn test_bind_creates_record_with_timestamp() {
     let (env, user) = setup();
-    panic::set_hook(Some(Box::new(|_| {})));
     let queue_id = Symbol::new(&env, "sneaker-drop");
     IdentityImpl::bind(env.clone(), user.clone(), queue_id.clone());
     let record = IdentityImpl::get_record(env.clone(), user.clone()).unwrap();
     assert!(record.queues.iter().any(|q| q == &queue_id));
-    panic::set_hook(None);
+    assert!(matches!(record.status, BindingStatus::Bound));
+    // bound_at should be set (ledger timestamp in tests defaults to 0)
+    assert_eq!(record.bound_at, 0); // default test env timestamp
 }
 
 #[test]
 fn test_unbind_removes_queue() {
     let (env, user) = setup();
-    panic::set_hook(Some(Box::new(|_| {})));
     let queue_id = Symbol::new(&env, "concert");
     IdentityImpl::bind(env.clone(), user.clone(), queue_id.clone());
     IdentityImpl::unbind(env.clone(), user.clone(), queue_id.clone());
     assert!(!IdentityImpl::is_bound(env.clone(), user.clone(), queue_id));
-    panic::set_hook(None);
 }
 
 #[test]
-fn test_non_transfer_enforcement() {
+fn test_is_bound_returns_false_before_bind() {
     let (env, user) = setup();
-    panic::set_hook(Some(Box::new(|_| {})));
+    let queue_id = Symbol::new(&env, "new-queue");
+    assert!(!IdentityImpl::is_bound(env, user, queue_id));
+}
+
+#[test]
+fn test_can_transfer_returns_false_for_different_identities() {
+    let (env, user) = setup();
     let other = Address::new(&env, &[2; 7]);
-    let queue_id = Symbol::new(&env, "sneaker-drop");
-    IdentityImpl::bind(env.clone(), user.clone(), queue_id.clone());
-    assert!(IdentityImpl::can_transfer(env.clone(), user.clone(), other.clone(), queue_id.clone()));
-    // Transfer between two bound identities should fail (return false).
-    // We record the failed attempt.
-    IdentityImpl::record_transfer_attempt(env.clone(), user.clone(), other, queue_id.clone());
-    assert!(!IdentityImpl::can_transfer(env, user, other, queue_id));
-    panic::set_hook(None);
-}
-
-#[test]
-fn test_attack_sequence_cannot_transfer() {
-    let (env, user) = setup();
-    panic::set_hook(Some(Box::new(|_| {})));
-    let attacker = Address::new(&env, &[3u8; 7]);
     let queue_id = Symbol::new(&env, "drop");
     IdentityImpl::bind(env.clone(), user.clone(), queue_id.clone());
-    assert!(!IdentityImpl::can_transfer(env.clone(), user.clone(), attacker.clone(), queue_id.clone()));
-    // Record attempts should not change the non-transfer outcome.
-    IdentityImpl::record_transfer_attempt(env, user, attacker, queue_id);
-    panic::set_hook(None);
+    assert!(!IdentityImpl::can_transfer(env, user, other, queue_id));
 }
 
 #[test]
-fn test_rebind_after_revoke_fails() {
+fn test_can_transfer_returns_true_same_identity() {
     let (env, user) = setup();
-    panic::set_hook(Some(Box::new(|_| {})));
-    let queue_id = Symbol::new(&env, "limited");
-    IdentityImpl::bind(env.clone(), user.clone(), queue_id.clone());
-    // Manually revoke status to simulate an admin revoke scenario.
-    let mut record = IdentityImpl::get_record(env.clone(), user.clone()).unwrap();
-    record.status = BindingStatus::Revoked;
-    let key = IdentityImpl::record_key(&env, &user);
-    env.storage().persistent().set(&key, &record);
-    assert!(!IdentityImpl::is_bound(env.clone(), user.clone(), queue_id.clone()));
-    // Further bind should panic with "identity revoked".
-    panic::set_hook(Some(Box::new(|_| {})));
-    IdentityImpl::bind(env, user, queue_id);
+    let queue_id = Symbol::new(&env, "self");
+    assert!(IdentityImpl::can_transfer(env, user.clone(), user, queue_id));
+}
+
+#[test]
+fn test_record_transfer_attempt_persists() {
+    let (env, user) = setup();
+    let other = Address::new(&env, &[3u8; 7]);
+    let queue_id = Symbol::new(&env, "drop");
+    IdentityImpl::record_transfer_attempt(env.clone(), user.clone(), other.clone(), queue_id.clone());
+    let key = IdentityImpl::attempt_key(&env, &user, &other, &queue_id);
+    let attempt = env.storage().persistent().get::<_, crate::TransferAttempt>(&key);
+    assert!(attempt.is_some());
+    assert!(attempt.unwrap().reverted);
+}
+
+#[test]
+fn test_initialize_sets_admin() {
+    let (env, admin) = setup();
+    IdentityImpl::initialize(env.clone(), admin.clone());
+    let stored = IdentityImpl::get_admin(env.clone());
+    assert_eq!(stored, Some(admin));
+}
+
+#[test]
+#[should_panic(expected = "already initialized")]
+fn test_initialize_twice_panics() {
+    let (env, admin) = setup();
+    IdentityImpl::initialize(env.clone(), admin.clone());
+    IdentityImpl::initialize(env, admin);
+}
+
+#[test]
+fn test_revoke_sets_revoked_status() {
+    let (env, admin) = setup();
+    IdentityImpl::initialize(env.clone(), admin.clone());
+    let user = Address::new(&env, &[5u8; 7]);
+    let queue_id = Symbol::new(&env, "q");
+    IdentityImpl::bind(env.clone(), user.clone(), queue_id);
+    IdentityImpl::revoke(env.clone(), admin.clone(), user.clone());
+    let record = IdentityImpl::get_record(env, user).unwrap();
+    assert!(matches!(record.status, BindingStatus::Revoked));
+}
+
+#[test]
+#[should_panic(expected = "identity revoked")]
+fn test_bind_after_revoke_panics() {
+    let (env, admin) = setup();
+    IdentityImpl::initialize(env.clone(), admin.clone());
+    let user = Address::new(&env, &[6u8; 7]);
+    let q1 = Symbol::new(&env, "q1");
+    let q2 = Symbol::new(&env, "q2");
+    IdentityImpl::bind(env.clone(), user.clone(), q1);
+    IdentityImpl::revoke(env.clone(), admin, user.clone());
+    IdentityImpl::bind(env, user, q2);
 }
