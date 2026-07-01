@@ -1,0 +1,35 @@
+# Git
+.git
+.gitignore
+
+# Node
+node_modules
+**/node_modules
+
+# Build artifacts
+dist
+**/dist
+contracts/target
+
+# Environment files
+.env
+**/.env
+**/.env.local
+**/.env.*.local
+
+# Logs
+*.log
+logs/
+
+# Test output
+coverage/
+**/coverage/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Editor
+.vscode
+.idea
+*.swp
