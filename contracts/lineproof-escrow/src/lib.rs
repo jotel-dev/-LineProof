@@ -41,6 +41,7 @@ pub trait Escrow {
     fn get_record(env: Env, identity: Address, queue_id: Symbol) -> Option<EscrowRecord>;
     fn get_config(env: Env, queue_id: Symbol) -> EscrowConfig;
     fn set_config(env: Env, admin: Address, config: EscrowConfig);
+    fn get_total_held(env: Env, queue_id: Symbol) -> i128;
 }
 
 pub struct EscrowImpl;
@@ -57,12 +58,13 @@ impl Escrow for EscrowImpl {
             panic!("existing escrow record");
         }
         let created_at = env.ledger().timestamp();
-        let config_key = Symbol::new(&env, "config");
+        let config_key = Self::config_key(&env, &queue_id);
         let config: EscrowConfig = env.storage().persistent().get(&config_key).unwrap_or(EscrowConfig {
             queue_id: queue_id.clone(),
             min_deposit: 0,
             max_deposit: i128::MAX,
             hold_period_days: 30,
+            admin: caller.clone(),
         });
         if amount < config.min_deposit || amount > config.max_deposit {
             panic!("amount outside configured bounds");
@@ -78,6 +80,12 @@ impl Escrow for EscrowImpl {
             released_at: None,
         };
         env.storage().persistent().set(&key, &record);
+
+        // Update running total for the queue
+        let total_key = Self::total_key(&env, &queue_id);
+        let current: i128 = env.storage().persistent().get(&total_key).unwrap_or(0);
+        env.storage().persistent().set(&total_key, &(current + amount));
+
         emit(&env, Symbol::new(&env, "Deposited"), queue_id, &caller, amount);
     }
 
@@ -141,6 +149,7 @@ impl Escrow for EscrowImpl {
                 min_deposit: 0,
                 max_deposit: i128::MAX,
                 hold_period_days: 30,
+                admin: env.current_contract_address(),
             })
     }
 
@@ -148,6 +157,11 @@ impl Escrow for EscrowImpl {
         admin.require_auth();
         let key = Self::config_key(&env, &config.queue_id);
         env.storage().persistent().set(&key, &config);
+    }
+
+    fn get_total_held(env: Env, queue_id: Symbol) -> i128 {
+        let total_key = Self::total_key(&env, &queue_id);
+        env.storage().persistent().get(&total_key).unwrap_or(0)
     }
 }
 
@@ -166,6 +180,10 @@ impl EscrowImpl {
 
     fn config_key(env: &Env, queue_id: &Symbol) -> (Symbol, Symbol) {
         (Symbol::new(env, "escrow_config"), queue_id.clone())
+    }
+
+    fn total_key(env: &Env, queue_id: &Symbol) -> (Symbol, Symbol) {
+        (Symbol::new(env, "escrow_total"), queue_id.clone())
     }
 }
 
