@@ -2,15 +2,15 @@
  * Utility helpers for the LineProof SDK.
  */
 
-import { Keypair } from '@stellar/stellar-sdk';
+import { Keypair, StrKey } from '@stellar/stellar-sdk';
 import { SDKError } from './types.js';
 
-/** Validates that a string looks like a valid Stellar public key. */
+/** Validates that a string is a valid Stellar Ed25519 public key (checksum verified). */
 export function assertValidAddress(address: string, fieldName = 'address'): void {
-  if (typeof address !== 'string' || !/^G[A-Z2-7]{55}$/.test(address)) {
+  if (typeof address !== 'string' || !StrKey.isValidEd25519PublicKey(address)) {
     throw new SDKError(
       'INVALID_ADDRESS',
-      `${fieldName} must be a 56-character Stellar public key starting with G`,
+      `${fieldName} must be a valid Stellar public key`,
       { value: address },
     );
   }

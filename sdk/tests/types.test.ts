@@ -1,4 +1,5 @@
 import { describe, it, expect } from 'vitest';
+import { Keypair } from '@stellar/stellar-sdk';
 import {
   SDKError,
   validateAddress,
@@ -24,12 +25,22 @@ describe('SDKError', () => {
 });
 
 describe('validateAddress', () => {
-  it('does not throw for a valid G-prefixed key', () => {
-    expect(() => validateAddress('G' + 'A'.repeat(55))).not.toThrow();
+  it('does not throw for a real valid Stellar public key', () => {
+    // Keypair.random() produces a cryptographically valid key with correct checksum
+    const key = Keypair.random().publicKey();
+    expect(() => validateAddress(key)).not.toThrow();
   });
 
-  it('throws SDKError for an invalid address', () => {
-    expect(() => validateAddress('INVALID')).toThrow(SDKError);
+  it('throws SDKError for an empty string', () => {
+    expect(() => validateAddress('')).toThrow(SDKError);
+  });
+
+  it('throws SDKError for a malformed key', () => {
+    expect(() => validateAddress('NOTAVALIDKEY')).toThrow(SDKError);
+  });
+
+  it('throws SDKError for a key with wrong prefix', () => {
+    expect(() => validateAddress('SAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA')).toThrow(SDKError);
   });
 });
 

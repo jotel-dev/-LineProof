@@ -1,4 +1,5 @@
 import { describe, it, expect } from 'vitest';
+import { Keypair } from '@stellar/stellar-sdk';
 import {
   assertValidAddress,
   toStroops,
@@ -11,16 +12,17 @@ import {
 import { SDKError } from '../src/types';
 
 describe('assertValidAddress', () => {
-  it('does not throw for a valid 56-char G-prefixed key', () => {
-    expect(() => assertValidAddress('G' + 'A'.repeat(55))).not.toThrow();
+  it('does not throw for a real valid Stellar public key', () => {
+    const key = Keypair.random().publicKey();
+    expect(() => assertValidAddress(key)).not.toThrow();
   });
 
   it('throws SDKError for a non-G-prefix key', () => {
-    expect(() => assertValidAddress('BABC123')).toThrow(SDKError);
+    expect(() => assertValidAddress('SAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA')).toThrow(SDKError);
   });
 
-  it('throws SDKError for a key that is too short', () => {
-    expect(() => assertValidAddress('GABC')).toThrow(SDKError);
+  it('throws SDKError for a malformed key', () => {
+    expect(() => assertValidAddress('NOTAKEY')).toThrow(SDKError);
   });
 });
 
