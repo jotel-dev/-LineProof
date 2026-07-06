@@ -1,7 +1,7 @@
 {
-  "name": "lineproof-sdk",
+  "name": "@lineproof/sdk",
   "version": "0.1.0",
-  "private": true,
+  "private": false,
   "description": "TypeScript SDK for LineProof waiting list protocol",
   "main": "./dist/index.js",
   "module": "./dist/index.mjs",

@@ -6,6 +6,7 @@ on:
       confirm:
         description: 'Type "deploy" to confirm testnet deployment'
         required: true
+        type: string
 
 jobs:
   deploy:
@@ -28,59 +29,64 @@ jobs:
             ~/.cargo/git
             contracts/target
           key: ${{ runner.os }}-cargo-${{ hashFiles('contracts/Cargo.lock') }}
+          restore-keys: ${{ runner.os }}-cargo-
 
       - name: Build WASM artifacts
         run: cargo build --target wasm32-unknown-unknown --release
         working-directory: contracts
 
-      - name: Install Soroban CLI
-        run: cargo install --locked soroban-cli
+      - name: Install Stellar CLI
+        run: cargo install --locked stellar-cli --features opt
 
-      - name: Configure Soroban identity
+      - name: Configure Stellar identity
         run: |
-          echo "${{ secrets.STELLAR_PRIVATE_KEY }}" | soroban keys add deployer --secret-key
+          echo "${{ secrets.STELLAR_PRIVATE_KEY }}" | stellar keys add deployer --secret-key
         env:
           STELLAR_NETWORK: testnet
 
       - name: Deploy lineproof-enrollment
+        id: deploy-enrollment
         run: |
-          soroban contract deploy \
+          stellar contract deploy \
             --wasm contracts/target/wasm32-unknown-unknown/release/lineproof_enrollment.wasm \
             --source deployer \
             --network testnet
-        id: deploy-enrollment
 
       - name: Deploy lineproof-identity
+        id: deploy-identity
         run: |
-          soroban contract deploy \
+          stellar contract deploy \
             --wasm contracts/target/wasm32-unknown-unknown/release/lineproof_identity.wasm \
             --source deployer \
             --network testnet
-        id: deploy-identity
 
       - name: Deploy lineproof-escrow
+        id: deploy-escrow
         run: |
-          soroban contract deploy \
+          stellar contract deploy \
             --wasm contracts/target/wasm32-unknown-unknown/release/lineproof_escrow.wasm \
             --source deployer \
             --network testnet
-        id: deploy-escrow
 
       - name: Deploy lineproof-queue
+        id: deploy-queue
         run: |
-          soroban contract deploy \
+          stellar contract deploy \
             --wasm contracts/target/wasm32-unknown-unknown/release/lineproof_queue.wasm \
             --source deployer \
             --network testnet
-        id: deploy-queue
 
       - name: Deploy lineproof-queue-factory
+        id: deploy-factory
         run: |
-          soroban contract deploy \
+          stellar contract deploy \
             --wasm contracts/target/wasm32-unknown-unknown/release/lineproof_queue_factory.wasm \
             --source deployer \
             --network testnet
-        id: deploy-factory
+
+      - name: Write deployment summary
+        run: |
+          echo "{\"run\": ${{ github.run_number }}, \"network\": \"testnet\", \"timestamp\": \"$(date -u +%Y-%m-%dT%H:%M:%SZ)\"}" > deployment-summary.json
 
       - name: Upload deployment summary
         uses: actions/upload-artifact@v4
