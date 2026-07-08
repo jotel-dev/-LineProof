@@ -54,7 +54,9 @@ impl Enrollment for EnrollmentImpl {
             match behavior {
                 DuplicateBehavior::Reject => panic!("duplicate enrollment"),
                 DuplicateBehavior::GrantWaitingList => panic!("duplicate enrollment: waiting list not yet implemented"),
-                DuplicateBehavior::OverrideExpired => panic!("duplicate enrollment: override-expired not yet implemented"),
+                DuplicateBehavior::OverrideExpired => {
+                    panic!("duplicate enrollment: override-expired not yet implemented")
+                }
             }
         }
         let enrolled_at = env.ledger().timestamp();
