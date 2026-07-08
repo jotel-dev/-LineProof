@@ -71,7 +71,14 @@ impl Enrollment for EnrollmentImpl {
         };
         let key = Self::record_key(&env, &caller, &queue_id);
         env.storage().persistent().set(&key, &record);
-        emit(&env, Symbol::new(&env, "Enrolled"), queue_id.clone(), &caller, enrolled_at, hash);
+        emit(
+            &env,
+            Symbol::new(&env, "Enrolled"),
+            queue_id.clone(),
+            &caller,
+            enrolled_at,
+            hash,
+        );
         EnrollmentProof {
             queue_id,
             identity: caller,

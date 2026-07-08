@@ -28,7 +28,14 @@ pub struct FactoryConfig {
 #[contract]
 pub trait QueueFactory {
     fn initialize(env: Env, admin: Address);
-    fn deploy_queue(env: Env, deployer: Address, slug: Symbol, name: Symbol, version: u32, wasm_hash: BytesN<32>) -> BytesN<32>;
+    fn deploy_queue(
+        env: Env,
+        deployer: Address,
+        slug: Symbol,
+        name: Symbol,
+        version: u32,
+        wasm_hash: BytesN<32>,
+    ) -> BytesN<32>;
     fn register_queue(env: Env, admin: Address, slug: Symbol, contract_id: BytesN<32>, version: u32);
     fn deactivate_queue(env: Env, admin: Address, slug: Symbol);
     fn reactivate_queue(env: Env, admin: Address, slug: Symbol);
@@ -59,7 +66,14 @@ impl QueueFactory for QueueFactoryImpl {
         emit(&env, Symbol::new(&env, "Init"), Symbol::new(&env, ""), BytesN::new(&env, &[0u8; 32]), 0, 0);
     }
 
-    fn deploy_queue(env: Env, deployer: Address, slug: Symbol, name: Symbol, version: u32, wasm_hash: BytesN<32>) -> BytesN<32> {
+    fn deploy_queue(
+        env: Env,
+        deployer: Address,
+        slug: Symbol,
+        name: Symbol,
+        version: u32,
+        wasm_hash: BytesN<32>,
+    ) -> BytesN<32> {
         deployer.require_auth();
         let config_key = Symbol::new(&env, "config");
         let config: FactoryConfig = env.storage().persistent().get(&config_key).unwrap();
@@ -114,7 +128,14 @@ impl QueueFactory for QueueFactoryImpl {
         metadata.active = false;
         let registry_key = Self::queue_registry_key(&env, &slug);
         env.storage().persistent().set(&registry_key, &metadata);
-        emit(&env, Symbol::new(&env, "Deactivated"), slug, metadata.contract_id, metadata.version, env.ledger().timestamp());
+        emit(
+            &env,
+            Symbol::new(&env, "Deactivated"),
+            slug,
+            metadata.contract_id,
+            metadata.version,
+            env.ledger().timestamp(),
+        );
     }
 
     fn reactivate_queue(env: Env, admin: Address, slug: Symbol) {
@@ -123,7 +144,14 @@ impl QueueFactory for QueueFactoryImpl {
         metadata.active = true;
         let registry_key = Self::queue_registry_key(&env, &slug);
         env.storage().persistent().set(&registry_key, &metadata);
-        emit(&env, Symbol::new(&env, "Reactivated"), slug, metadata.contract_id, metadata.version, env.ledger().timestamp());
+        emit(
+            &env,
+            Symbol::new(&env, "Reactivated"),
+            slug,
+            metadata.contract_id,
+            metadata.version,
+            env.ledger().timestamp(),
+        );
     }
 
     fn set_config(env: Env, admin: Address, min_version: u32, max_version: u32) {

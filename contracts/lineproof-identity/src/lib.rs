@@ -156,7 +156,12 @@ impl IdentityImpl {
         (Symbol::new(env, "identity"), identity.clone())
     }
 
-    pub fn attempt_key(env: &Env, from: &Address, to: &Address, queue_id: &Symbol) -> (Symbol, Address, Address, Symbol) {
+    pub fn attempt_key(
+        env: &Env,
+        from: &Address,
+        to: &Address,
+        queue_id: &Symbol,
+    ) -> (Symbol, Address, Address, Symbol) {
         (Symbol::new(env, "attempt"), from.clone(), to.clone(), queue_id.clone())
     }
 }
