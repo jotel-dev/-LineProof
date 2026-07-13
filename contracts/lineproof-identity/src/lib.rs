@@ -26,7 +26,7 @@ pub struct TransferAttempt {
     pub reverted: bool,
 }
 
-#[contract]
+#[contractclient(name = "IdentityClient")]
 pub trait Identity {
     fn bind(env: Env, identity: Address, queue_id: Symbol);
     fn unbind(env: Env, identity: Address, queue_id: Symbol);
@@ -39,6 +39,7 @@ pub trait Identity {
     fn initialize(env: Env, admin: Address);
 }
 
+#[contract]
 pub struct IdentityImpl;
 
 #[contractimpl]
