@@ -42,7 +42,7 @@ pub enum PositionStatus {
     Cancelled,
 }
 
-#[contract]
+#[contractclient(name = "QueueClient")]
 pub trait Queue {
     fn initialize(env: Env, admin: Address, config: QueueConfig);
     fn open_enrollment(env: Env, admin: Address);
@@ -57,6 +57,7 @@ pub trait Queue {
     fn close(env: Env, admin: Address);
 }
 
+#[contract]
 pub struct QueueImpl;
 
 #[contractimpl]
