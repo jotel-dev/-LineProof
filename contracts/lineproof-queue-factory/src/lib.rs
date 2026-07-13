@@ -25,7 +25,7 @@ pub struct FactoryConfig {
     pub max_version: u32,
 }
 
-#[contract]
+#[contractclient(name = "QueueFactoryClient")]
 pub trait QueueFactory {
     fn initialize(env: Env, admin: Address);
     fn deploy_queue(
@@ -47,6 +47,7 @@ pub trait QueueFactory {
     fn queue_count(env: Env) -> u32;
 }
 
+#[contract]
 pub struct QueueFactoryImpl;
 
 #[contractimpl]
