@@ -1,4 +1,5 @@
-use soroban_sdk::{contract, contractimpl, contracttype, Address, Env, Symbol, Vec};
+#![no_std]
+use soroban_sdk::{contract, contractclient, contractimpl, contracttype, Address, Env, Symbol, Vec};
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 #[contracttype]
@@ -65,7 +66,7 @@ impl Identity for IdentityImpl {
         let mut record = Self::get_record_internal(&env, &identity);
         let mut updated: Vec<Symbol> = Vec::new(&env);
         for q in record.queues.iter() {
-            if q != &queue_id {
+            if q != queue_id {
                 updated.push_back(q.clone());
             }
         }
@@ -77,7 +78,7 @@ impl Identity for IdentityImpl {
 
     fn is_bound(env: Env, identity: Address, queue_id: Symbol) -> bool {
         let record = Self::get_record_internal(&env, &identity);
-        record.queues.iter().any(|q| q == &queue_id)
+        record.queues.iter().any(|q| q == queue_id)
     }
 
     fn can_transfer(_env: Env, from: Address, to: Address, _queue_id: Symbol) -> bool {
@@ -172,7 +173,7 @@ fn emit(env: &Env, kind: Symbol, queue_id: Symbol, _identity: &Address, _timesta
         Symbol::new(env, "lineproof.identity"),
         kind,
         queue_id,
-    ));
+    ), ());
 }
 
 #[cfg(test)]
