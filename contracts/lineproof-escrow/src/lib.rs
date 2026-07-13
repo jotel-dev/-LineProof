@@ -1,4 +1,5 @@
-use soroban_sdk::{contract, contractimpl, contracttype, Address, Env, Symbol};
+#![no_std]
+use soroban_sdk::{contract, contractclient, contractimpl, contracttype, Address, Env, Symbol};
 
 #[contracttype]
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -193,7 +194,7 @@ fn emit(env: &Env, kind: Symbol, queue_id: Symbol, _identity: &Address, _amount:
         Symbol::new(env, "lineproof.escrow"),
         kind,
         queue_id,
-    ));
+    ), ());
 }
 
 #[cfg(test)]
